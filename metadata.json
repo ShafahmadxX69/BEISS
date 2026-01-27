@@ -1,0 +1,5 @@
+{
+  "name": "BEIS Production Planning Dashboard",
+  "description": "A high-performance PPIC dashboard for monitoring production schedules, tracking quantities, and generating AI-powered insights for manufacturing optimization.",
+  "requestFramePermissions": []
+}
