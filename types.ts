@@ -21,6 +21,17 @@ export interface DailyLog {
   qty: number;
 }
 
+export interface InvoiceItem {
+  PO: string;
+  TYPE: string;
+  COLOR: string;
+  SIZE: string;
+  QTY: number;
+  REWORK: number;
+  QTY_STATUS: string;
+  INV_STATUS: string;
+}
+
 export interface DashboardStats {
   totalOrder: number;
   totalProduced: number;
@@ -28,4 +39,4 @@ export interface DashboardStats {
   completionRate: number;
 }
 
-export type ViewType = 'dashboard' | 'table' | 'ai-insights';
+export type ViewType = 'dashboard' | 'table' | 'ai-insights' | 'invoice-checker';

@@ -5,6 +5,7 @@ import { ProductionItem, ViewType, DashboardStats } from './types';
 import ProductionTable from './components/ProductionTable';
 import DashboardView from './components/DashboardView';
 import AIInsightsPanel from './components/AIInsightsPanel';
+import InvoiceChecker from './components/InvoiceChecker';
 
 const App: React.FC = () => {
   const [data, setData] = useState<ProductionItem[]>([]);
@@ -65,16 +66,15 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-[#fffafb] text-slate-900">
-      {/* Sidebar - Soft Dark Plum with Pink accents */}
       <aside className="w-64 bg-[#2d1b2e] text-white fixed h-full hidden lg:flex flex-col shadow-2xl">
         <div className="p-8 border-b border-white/5">
           <div className="flex items-center gap-2 mb-1">
              <span className="text-2xl">🧳</span>
              <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#ffafbd] to-[#ffc3a0]">BEIS BASE</h1>
           </div>
-          <p className="text-[10px] text-pink-300 uppercase tracking-[0.3em] font-black">By EMILIO PPIC</p>
+          <p className="text-[10px] text-pink-300 uppercase tracking-[0.3em] font-black">By Emilio PPIC</p>
         </div>
-        <nav className="flex-1 p-4 space-y-3 mt-4">
+        <nav className="flex-1 p-4 space-y-3 mt-4 overflow-y-auto custom-scrollbar">
           <button 
             onClick={() => setView('dashboard')}
             className={`w-full text-left px-5 py-4 rounded-2xl flex items-center gap-4 transition-all duration-300 ${view === 'dashboard' ? 'bg-gradient-to-r from-[#ff8fa3] to-[#ffb347] text-white shadow-lg shadow-[#ff8fa3]/30 scale-[1.02]' : 'text-slate-400 hover:text-pink-200 hover:bg-white/5'}`}
@@ -90,6 +90,13 @@ const App: React.FC = () => {
             <span className="font-bold">Production</span>
           </button>
           <button 
+            onClick={() => setView('invoice-checker')}
+            className={`w-full text-left px-5 py-4 rounded-2xl flex items-center gap-4 transition-all duration-300 ${view === 'invoice-checker' ? 'bg-gradient-to-r from-[#ff8fa3] to-[#ffb347] text-white shadow-lg shadow-[#ff8fa3]/30 scale-[1.02]' : 'text-slate-400 hover:text-pink-200 hover:bg-white/5'}`}
+          >
+            <span className="text-xl">📦</span>
+            <span className="font-bold">Invoice Checker</span>
+          </button>
+          <button 
             onClick={() => setView('ai-insights')}
             className={`w-full text-left px-5 py-4 rounded-2xl flex items-center gap-4 transition-all duration-300 ${view === 'ai-insights' ? 'bg-gradient-to-r from-[#ff8fa3] to-[#ffb347] text-white shadow-lg shadow-[#ff8fa3]/30 scale-[1.02]' : 'text-slate-400 hover:text-pink-200 hover:bg-white/5'}`}
           >
@@ -102,18 +109,17 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 lg:ml-64 pb-12">
         <header className="bg-white/80 backdrop-blur-md border-b border-pink-50 sticky top-0 z-10 px-8 py-5 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight capitalize flex items-center gap-3">
-               {view === 'dashboard' ? '📊' : view === 'table' ? '👜' : '✨'}
+               {view === 'dashboard' ? '📊' : view === 'table' ? '👜' : view === 'invoice-checker' ? '📦' : '✨'}
                {view.replace('-', ' ')}
             </h2>
             <p className="text-xs text-pink-400 font-bold uppercase tracking-widest">Live Operations</p>
           </div>
           <div className="flex items-center gap-5">
-            <span className="hidden sm:inline-block px-4 py-1.5 bg-pink-50 text-pink-500 text-[10px] font-black rounded-full border border-pink-100">CLOUD SYNC ACTIVE 💼</span>
+            <span className="hidden sm:inline-block px-4 py-1.5 bg-pink-50 text-pink-500 text-[10px] font-black rounded-full border border-pink-100 uppercase tracking-widest">CLOUD SYNC ACTIVE 💼</span>
             <div className="h-10 w-10 bg-gradient-to-br from-[#ffafbd] to-[#ffc3a0] rounded-2xl flex items-center justify-center shadow-md shadow-pink-100">
               <span className="text-white text-xs font-black">OP</span>
             </div>
@@ -123,6 +129,7 @@ const App: React.FC = () => {
         <div className="p-8 max-w-[2200px] mx-auto">
           {view === 'dashboard' && <DashboardView data={data} stats={stats} />}
           {view === 'table' && <ProductionTable data={data} />}
+          {view === 'invoice-checker' && <InvoiceChecker />}
           {view === 'ai-insights' && <AIInsightsPanel data={data} />}
         </div>
       </main>
