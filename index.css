@@ -4,6 +4,7 @@ body {
   -webkit-font-smoothing: antialiased;
   margin: 0;
   padding: 0;
+  color: #1e293b;
 }
 
 .animate-fadeIn {
@@ -15,13 +16,10 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-p, span, div, td, th {
-  letter-spacing: -0.01em;
-}
-
-/* Custom Scrollbar for aesthetic */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -37,7 +35,6 @@ p, span, div, td, th {
   background: #ffb8c6;
 }
 
-/* Custom Scrollbar class for containers */
 .custom-scrollbar::-webkit-scrollbar {
   height: 6px;
   width: 6px;
@@ -50,4 +47,13 @@ p, span, div, td, th {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #ffd1d9;
   border-radius: 10px;
+}
+
+/* Typography refinements */
+h1, h2, h3, h4 {
+  letter-spacing: -0.02em;
+}
+
+p, span, div, td, th {
+  letter-spacing: -0.01em;
 }
