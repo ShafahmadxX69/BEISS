@@ -1,3 +1,4 @@
+
 import { ProductionItem, DailyLog, InvoiceItem } from '../types';
 
 const SPREADSHEET_ID = '1-4Bd7MeYXMkkTWgkIbzrsn_eNz3Dzw5FgTxC7lFgsB0';
@@ -116,6 +117,7 @@ const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: num
   const invoiceList: { colIndex: number; date: Date | null; hasDate: boolean; qty: number }[] = [];
   const rowC = rows[rowIdx].c;
 
+  // Collect all invoices for this specific variant row (PO, Type, Color, Size)
   for (let col = 14; col < rows[0].c.length; col++) {
     const invQty = Number(rowC[col]?.v || 0);
     if (invQty <= 0) continue;
@@ -131,6 +133,7 @@ const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: num
     });
   }
 
+  // Stock allocation priority: Dates first, then by date, then by column index
   invoiceList.sort((a, b) => {
     if (a.hasDate !== b.hasDate) return a.hasDate ? -1 : 1;
     if (a.date && b.date) {
@@ -147,10 +150,16 @@ const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: num
       return remainingIn >= inv.qty ? "READY" : "NOT READY";
     }
 
+    // Subtract stock for prioritized invoices
     if (inv.hasDate && targetDate) {
       if (inv.date!.getTime() < targetDate.getTime()) {
         remainingIn -= inv.qty;
       } else if (inv.date!.getTime() === targetDate.getTime() && inv.colIndex < targetCol) {
+        remainingIn -= inv.qty;
+      }
+    } else if (!inv.hasDate && !targetDate) {
+      // If both don't have dates, prioritize by column index
+      if (inv.colIndex < targetCol) {
         remainingIn -= inv.qty;
       }
     }
@@ -182,9 +191,11 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     brandInput = (brandInput || "").trim().toUpperCase();
     invoiceInput = (invoiceInput || "").trim().toUpperCase();
 
+    // Today Date (K1 -> Index 10)
     const todayVal = rows[0].c[10]?.v;
     const todayDate = normalizeDate(todayVal) || new Date();
 
+    // Find the target column for the specific Brand and Invoice Number
     let targetCol = -1;
     const brandRow = rows[0].c;
     const invNoRow = rows[4].c;
@@ -203,6 +214,7 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     const targetDate = normalizeDate(rows[1].c[targetCol]?.v);
     const results: InvoiceItem[] = [];
 
+    // Rows 5 and below contain the actual production data
     for (let rowIdx = 5; rowIdx < rows.length; rowIdx++) {
       const c = rows[rowIdx].c;
       if (!c) continue;
