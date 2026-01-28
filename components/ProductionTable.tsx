@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ProductionItem } from '../types';
 
@@ -12,7 +11,6 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Filter shows ALL items by default, including finished
   const filteredData = data.filter(item => 
     item.woNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.modelType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,7 +34,6 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
   };
 
   const getStatusBadge = (item: ProductionItem) => {
-    // 1. Finished status takes priority
     if (item.remainingQty <= 0) {
       return (
         <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm inline-block whitespace-nowrap">
@@ -47,7 +44,6 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
 
     if (!item.productionDate) return null;
 
-    // 2. Specific check for "On Producing" string from Column A
     if (item.productionDate.toLowerCase().includes('on producing')) {
       return (
         <span className="px-4 py-1.5 bg-pink-50 text-[#ff8fa3] rounded-2xl text-[10px] font-black uppercase tracking-widest border border-pink-100 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
@@ -57,10 +53,7 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
       );
     }
 
-    // 3. Date-based logic
     const prodDate = new Date(item.productionDate);
-    
-    // If date is valid and in the past (but item not finished)
     if (!isNaN(prodDate.getTime()) && prodDate < today) {
       return (
         <span className="px-4 py-1.5 bg-pink-50 text-[#ff8fa3] rounded-2xl text-[10px] font-black uppercase tracking-widest border border-pink-100 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
@@ -70,7 +63,6 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
       );
     }
     
-    // 4. Future plan status
     return (
       <span className="px-4 py-1.5 bg-slate-50 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm whitespace-nowrap">
         Plan on {formatDate(item.productionDate)} 🧳
@@ -165,7 +157,6 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
                       <span className="text-[11px] font-black text-pink-300 tracking-[0.1em] uppercase">
                         {progress.toFixed(1)}% QUOTA
                       </span>
-                      {progress >= 100 && <span className="text-sm">✨</span>}
                     </div>
                   </td>
                 </tr>

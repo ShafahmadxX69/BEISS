@@ -48,7 +48,6 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
-  // Aggregate data by Color and Size across all orders
   const chartData = useMemo(() => {
     const grouped = data.reduce((acc, item) => {
       const key = `${item.color} | ${item.size}`;
@@ -86,7 +85,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
 
   return (
     <div className="space-y-10 animate-fadeIn">
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'TOTAL ORDERS', value: stats.totalOrder.toLocaleString(), color: 'from-[#ffafbd] to-[#ffc3a0]', icon: '🧳' },
