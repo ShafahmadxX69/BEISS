@@ -50,6 +50,17 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
   const chartData = useMemo(() => {
+    // Define an interface for the grouped item to prevent TypeScript from inferring 'unknown' types
+    interface GroupedItem {
+      color: string;
+      size: string;
+      displayLabel: string;
+      produced: number;
+      remaining: number;
+      total: number;
+      soCount: number;
+    }
+
     const grouped = data.reduce((acc, item) => {
       const key = `${item.color} | ${item.size}`;
       if (!acc[key]) {
@@ -68,7 +79,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
       acc[key].total += item.orderQty;
       acc[key].soCount += 1;
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, GroupedItem>);
 
     return Object.values(grouped)
       .sort((a, b) => b.total - a.total)
