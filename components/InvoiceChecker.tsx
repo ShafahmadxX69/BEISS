@@ -145,7 +145,7 @@ const InvoiceChecker: React.FC = () => {
                 {invoice.toUpperCase()} TOTAL: {totalQty.toLocaleString()} PCS 🧳
               </p>
               <p className="text-[10px] font-black text-pink-400 mt-1 uppercase tracking-widest">
-                😊 If something happens, contact Emilio!
+                😊 If there is something happen, call Emilio!
               </p>
             </div>
             <button 

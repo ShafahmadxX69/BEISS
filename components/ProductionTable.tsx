@@ -146,14 +146,8 @@ const ProductionTable: React.FC<ProductionTableProps> = ({ data }) => {
                   <td className="px-8 py-7 text-right align-middle text-pink-500 font-black text-lg whitespace-nowrap">
                     {row.producedQty.toLocaleString()}
                   </td>
-                  <td className="px-8 py-7 text-right align-middle text-orange-400 font-black text-lg whitespace-nowrap">
-                    {row.remainingQty <= 0 ? (
-                      <span className="text-emerald-500 font-black text-sm uppercase tracking-tighter bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex items-center gap-1 justify-end">
-                        Finished 👜
-                      </span>
-                    ) : (
-                      row.remainingQty.toLocaleString()
-                    )}
+                  <td className={`px-8 py-7 text-right align-middle font-black text-lg whitespace-nowrap ${row.remainingQty <= 0 ? 'text-emerald-500' : 'text-orange-400'}`}>
+                    {row.remainingQty.toLocaleString()}
                   </td>
                   <td className="px-8 py-7 align-middle text-center whitespace-nowrap">
                     <span className="text-[10px] font-black text-pink-600 bg-pink-100/50 px-3 py-1.5 rounded-xl uppercase tracking-widest border border-pink-100">

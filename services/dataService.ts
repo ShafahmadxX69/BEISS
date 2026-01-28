@@ -9,6 +9,21 @@ const IN_SHEET_NAME = 'IN';
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 const IN_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${INVOICE_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${IN_SHEET_NAME}`;
 
+const normalizeDate = (v: any): Date | null => {
+  if (v instanceof Date) return v;
+  if (v === null || v === undefined) return null;
+  const str = v.toString().trim();
+  if (!str) return null;
+
+  const gvizMatch = str.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (gvizMatch) {
+    // Note: GViz months are 0-based
+    return new Date(parseInt(gvizMatch[1]), parseInt(gvizMatch[2]), parseInt(gvizMatch[3]));
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const parseProductionInfo = (val: any): { date: string; line: string } => {
   if (!val) return { date: '', line: 'N/A' };
   const str = val.toString().trim();
@@ -98,9 +113,65 @@ export const fetchProductionData = async (): Promise<ProductionItem[]> => {
   }
 };
 
-/**
- * Fetch and process Invoice data from the second sheet
- */
+const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: number, targetDate: Date | null): string => {
+  const invoiceList: { colIndex: number; date: Date | null; hasDate: boolean; qty: number }[] = [];
+  const rowC = rows[rowIdx].c;
+
+  for (let col = 14; col < rows[0].c.length; col++) {
+    const invQty = Number(rowC[col]?.v || 0);
+    if (invQty <= 0) continue;
+
+    const rawDate = rows[1].c[col]?.v;
+    const date = normalizeDate(rawDate);
+
+    invoiceList.push({
+      colIndex: col,
+      date: date,
+      hasDate: !!date,
+      qty: invQty
+    });
+  }
+
+  // Sort by priority: with date first, then by date value, then by column index
+  invoiceList.sort((a, b) => {
+    if (a.hasDate !== b.hasDate) return a.hasDate ? -1 : 1;
+    if (a.date && b.date) {
+      const diff = a.date.getTime() - b.date.getTime();
+      if (diff !== 0) return diff;
+    }
+    return a.colIndex - b.colIndex;
+  });
+
+  let remainingIn = qtyIn;
+
+  for (const inv of invoiceList) {
+    if (inv.colIndex === targetCol) {
+      return remainingIn >= inv.qty ? "READY" : "NOT READY";
+    }
+
+    if (inv.hasDate && targetDate) {
+      if (inv.date!.getTime() < targetDate.getTime()) {
+        remainingIn -= inv.qty;
+      } else if (inv.date!.getTime() === targetDate.getTime() && inv.colIndex < targetCol) {
+        remainingIn -= inv.qty;
+      }
+    }
+  }
+  return "NOT READY";
+};
+
+const getInvStatus = (targetDate: Date | null, todayDate: Date): string => {
+  if (!targetDate) return "TBA";
+  
+  const targetT = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+  const todayT = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
+
+  if (targetT > todayT) return "Will be Export on " + targetDate.toLocaleDateString();
+  if (targetT === todayT) return "Will Export Today";
+  if (targetT < todayT) return "Exported";
+  return "TBA";
+};
+
 export const fetchInvoiceData = async (brandInput: string, invoiceInput: string): Promise<InvoiceItem[]> => {
   try {
     const response = await fetch(IN_GVIZ_URL);
@@ -110,10 +181,10 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     const rows = json.table.rows;
     if (!rows || rows.length < 5) return [];
 
-    brandInput = brandInput.trim().toUpperCase();
-    invoiceInput = invoiceInput.trim().toUpperCase();
+    brandInput = (brandInput || "").trim().toUpperCase();
+    invoiceInput = (invoiceInput || "").trim().toUpperCase();
 
-    // Today Date (K1)
+    // Today Date (K1 -> Index 10)
     const todayVal = rows[0].c[10]?.v;
     const todayDate = normalizeDate(todayVal) || new Date();
 
@@ -139,9 +210,14 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     for (let rowIdx = 5; rowIdx < rows.length; rowIdx++) {
       const c = rows[rowIdx].c;
       if (!c) continue;
+      
       const qty = Number(c[targetCol]?.v || 0);
       if (qty <= 0) continue;
 
+      const po = c[0]?.v?.toString() || '-';
+      const type = c[4]?.v?.toString() || '-';
+      const size = c[5]?.v?.toString() || '-';
+      const color = c[7]?.v?.toString() || '-';
       const qtyIn = Number(c[9]?.v || 0);
       const rework = Number(c[13]?.v || 0);
       
@@ -149,10 +225,10 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
       const invStatus = getInvStatus(targetDate, todayDate);
 
       results.push({
-        PO: c[0]?.v?.toString() || '-',
-        TYPE: c[4]?.v?.toString() || '-',
-        COLOR: c[7]?.v?.toString() || '-',
-        SIZE: c[5]?.v?.toString() || '-',
+        PO: po,
+        TYPE: type,
+        COLOR: color,
+        SIZE: size,
         QTY: qty,
         REWORK: rework,
         QTY_STATUS: qtyStatus,
@@ -164,65 +240,6 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     console.error("Invoice search error:", err);
     return [];
   }
-};
-
-const normalizeDate = (v: any): Date | null => {
-  if (v instanceof Date) return v;
-  if (!v) return null;
-  const str = v.toString();
-  const gvizMatch = str.match(/Date\((\d+),(\d+),(\d+)\)/);
-  if (gvizMatch) {
-    return new Date(parseInt(gvizMatch[1]), parseInt(gvizMatch[2]), parseInt(gvizMatch[3]));
-  }
-  const d = new Date(str);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: number, targetDate: Date | null): string => {
-  const rowC = rows[rowIdx].c;
-  const invoiceList: { col: number; date: Date | null; hasDate: boolean; qty: number }[] = [];
-  
-  for (let col = 14; col < rows[0].c.length; col++) {
-    const invQty = Number(rowC[col]?.v || 0);
-    if (invQty <= 0) continue;
-    const date = normalizeDate(rows[1].c[col]?.v);
-    invoiceList.push({ col, date, hasDate: !!date, qty: invQty });
-  }
-
-  invoiceList.sort((a, b) => {
-    if (a.hasDate !== b.hasDate) return a.hasDate ? -1 : 1;
-    if (a.date && b.date) {
-      const diff = a.date.getTime() - b.date.getTime();
-      if (diff !== 0) return diff;
-    }
-    return a.col - b.col;
-  });
-
-  let remainingIn = qtyIn;
-  for (const inv of invoiceList) {
-    if (inv.col === targetCol) {
-      return remainingIn >= inv.qty ? "READY" : "NOT READY";
-    }
-    if (inv.hasDate && targetDate) {
-      if (inv.date! < targetDate) {
-        remainingIn -= inv.qty;
-      } else if (inv.date!.getTime() === targetDate.getTime() && inv.col < targetCol) {
-        remainingIn -= inv.qty;
-      }
-    }
-  }
-  return "NOT READY";
-};
-
-const getInvStatus = (targetDate: Date | null, todayDate: Date): string => {
-  if (!targetDate) return "TBA";
-  const targetTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
-  const todayTime = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
-  
-  if (targetTime > todayTime) return "Will be Export on " + targetDate.toLocaleDateString();
-  if (targetTime === todayTime) return "Will Export Today";
-  if (targetTime < todayTime) return "Exported";
-  return "TBA";
 };
 
 export const calculateStats = (data: ProductionItem[]) => {

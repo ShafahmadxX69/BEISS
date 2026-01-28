@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LabelList } from 'recharts';
 import { ProductionItem, DashboardStats } from '../types';
 
@@ -10,28 +10,36 @@ interface DashboardViewProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const produced = payload[0].value;
+    const remaining = payload[1].value;
+    const total = produced + remaining;
+    const percentage = total > 0 ? ((produced / total) * 100).toFixed(1) : 0;
+
     return (
-      <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2rem] border border-pink-100 shadow-2xl shadow-pink-200/40">
-        <p className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-2">Work Order Detail</p>
-        <p className="text-sm font-black text-slate-800 mb-4">{label}</p>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-8">
-            <span className="text-xs font-bold text-slate-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#ff8fa3]"></span> Produced
-            </span>
-            <span className="text-sm font-black text-slate-800">{payload[0].value.toLocaleString()}</span>
+      <div className="bg-white/95 backdrop-blur-sm p-5 rounded-3xl border border-pink-100 shadow-2xl shadow-pink-200/20">
+        <p className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-1">Batch Analytics</p>
+        <p className="text-sm font-black text-slate-800 mb-1">Variant Summary</p>
+        <p className="text-[11px] font-bold text-slate-500 mb-3 border-b border-pink-50 pb-2 flex items-center gap-2">
+          <span className="px-2 py-0.5 bg-pink-50 rounded-md text-pink-400">{data.color}</span>
+          <span className="px-2 py-0.5 bg-slate-50 rounded-md text-slate-400">{data.size}</span>
+        </p>
+        <div className="space-y-1.5">
+          <div className="flex justify-between gap-6">
+            <span className="text-xs font-bold text-slate-500">Produced:</span>
+            <span className="text-xs font-black text-slate-800">{produced.toLocaleString()} PCS</span>
           </div>
-          <div className="flex items-center justify-between gap-8">
-            <span className="text-xs font-bold text-slate-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-pink-100"></span> Outstanding
-            </span>
-            <span className="text-sm font-black text-slate-800">{payload[1].value.toLocaleString()}</span>
+          <div className="flex justify-between gap-6">
+            <span className="text-xs font-bold text-slate-500">Goal:</span>
+            <span className="text-xs font-black text-slate-800">{total.toLocaleString()} PCS</span>
           </div>
-          <div className="pt-2 mt-2 border-t border-pink-50 flex items-center justify-between gap-8">
-            <span className="text-xs font-black text-pink-500 uppercase">Progress</span>
-            <span className="text-sm font-black text-pink-500">
-              {((payload[0].value / (payload[0].value + payload[1].value)) * 100).toFixed(1)}%
-            </span>
+          <div className="flex justify-between gap-6">
+            <span className="text-xs font-bold text-slate-500">Order Count:</span>
+            <span className="text-xs font-black text-slate-800">{data.soCount} SOs</span>
+          </div>
+          <div className="pt-2 flex justify-between items-center">
+            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Progress</span>
+            <span className="text-sm font-black text-emerald-500">{percentage}%</span>
           </div>
         </div>
       </div>
@@ -41,17 +49,36 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
-  // Sort by order quantity to show the biggest batches first
-  const sortedData = [...data].sort((a, b) => b.orderQty - a.orderQty);
-  
-  const chartData = sortedData.slice(0, 10).map(item => ({
-    name: item.modelType.length > 25 ? item.modelType.substring(0, 25) + '...' : item.modelType,
-    fullName: `${item.modelType} (${item.color})`,
-    produced: item.producedQty,
-    remaining: item.remainingQty,
-    total: item.orderQty,
-    wo: item.woNumber
-  }));
+  // Aggregate data by Color and Size across all orders
+  const chartData = useMemo(() => {
+    const grouped = data.reduce((acc, item) => {
+      const key = `${item.color} | ${item.size}`;
+      if (!acc[key]) {
+        acc[key] = {
+          color: item.color,
+          size: item.size,
+          displayLabel: key.length > 25 ? key.substring(0, 25) + '...' : key,
+          produced: 0,
+          remaining: 0,
+          total: 0,
+          soCount: 0
+        };
+      }
+      acc[key].produced += item.producedQty;
+      acc[key].remaining += item.remainingQty;
+      acc[key].total += item.orderQty;
+      acc[key].soCount += 1;
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(grouped)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 15)
+      .map(item => ({
+        ...item,
+        percentage: item.total > 0 ? Math.round((item.produced / item.total) * 100) : 0
+      }));
+  }, [data]);
 
   const pieData = [
     { name: 'Produced', value: stats.totalProduced, color: '#ff8fa3' },
@@ -80,85 +107,71 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] border border-pink-50 shadow-sm overflow-hidden">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+        <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] border border-pink-50 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
               <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <span className="w-2 h-8 bg-gradient-to-b from-[#ffafbd] to-[#ffc3a0] rounded-full"></span>
-                PRODUCTION PERFORMANCE 👜
+                PRODUCTION ANALYTICS 👜
               </h3>
-              <p className="text-xs text-slate-400 font-bold ml-5 uppercase tracking-widest mt-1">Top 10 Active Batches</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 ml-5">Aggregated Variants (Color & Size)</p>
             </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#ff8fa3]"></div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Done</span>
+            <div className="flex items-center gap-4 bg-pink-50/50 px-4 py-2 rounded-2xl border border-pink-50">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-[#ff8fa3]"></div>
+                <span className="text-[9px] font-black text-slate-500 uppercase">DONE</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-pink-50"></div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Left</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-[#fff0f3] border border-pink-100"></div>
+                <span className="text-[9px] font-black text-slate-500 uppercase">LEFT</span>
               </div>
             </div>
           </div>
-
-          <div className="h-[550px] w-full mt-4 pr-4">
+          
+          <div className="flex-1 min-h-[550px] w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={chartData} 
-                layout="vertical" 
-                margin={{ left: 10, right: 60, top: 0, bottom: 0 }}
-                barGap={0}
-              >
+              <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 60, top: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                  <linearGradient id="prodGradient" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%" stopColor="#ffafbd" />
                     <stop offset="100%" stopColor="#ff8fa3" />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#fff0f3" />
-                <XAxis type="number" hide />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#fff5f6" />
                 <YAxis 
-                  dataKey="name" 
+                  dataKey="displayLabel" 
                   type="category" 
                   width={180} 
-                  style={{ fontSize: '12px', fontWeight: 800, fill: '#64748b' }} 
+                  style={{ fontSize: '11px', fontWeight: 800, fill: '#64748b' }} 
                   axisLine={false}
                   tickLine={false}
                 />
+                <XAxis type="number" hide />
                 <Tooltip 
                   cursor={{ fill: 'rgba(255, 175, 189, 0.05)' }}
                   content={<CustomTooltip />}
                 />
-                {/* Produced Bar */}
                 <Bar 
                   dataKey="produced" 
                   name="Produced QTY" 
                   stackId="a" 
-                  fill="url(#barGradient)" 
-                  barSize={32}
-                  radius={[8, 0, 0, 8]}
-                >
-                  <LabelList 
-                    dataKey="produced" 
-                    position="center" 
-                    style={{ fill: '#fff', fontSize: '10px', fontWeight: 900, pointerEvents: 'none' }}
-                    formatter={(val: number) => val > 50 ? val.toLocaleString() : ''}
-                  />
-                </Bar>
-                {/* Remaining Bar */}
+                  fill="url(#prodGradient)" 
+                  barSize={18} 
+                  radius={[4, 0, 0, 4]} 
+                />
                 <Bar 
                   dataKey="remaining" 
                   name="Outstanding" 
                   stackId="a" 
                   fill="#fff0f3" 
-                  radius={[0, 8, 8, 0]} 
-                  barSize={32}
+                  barSize={18} 
+                  radius={[0, 4, 4, 0]}
                 >
                   <LabelList 
-                    dataKey="total" 
+                    dataKey="percentage" 
                     position="right" 
-                    style={{ fill: '#ff8fa3', fontSize: '11px', fontWeight: 900, paddingLeft: '10px' }}
-                    formatter={(val: number) => `Goal: ${val.toLocaleString()}`}
+                    formatter={(val: number) => `${val}%`} 
+                    style={{ fontSize: '10px', fontWeight: 900, fill: '#ff8fa3', paddingLeft: '8px' }} 
                   />
                 </Bar>
               </BarChart>
@@ -169,8 +182,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
         <div className="bg-white p-10 rounded-[3rem] border border-pink-50 shadow-sm flex flex-col">
           <h3 className="text-xl font-black text-slate-800 mb-10 text-center">OVERALL REACH 🎒</h3>
           <div className="flex-1 flex flex-col justify-center">
-            <div className="h-80 w-full flex items-center justify-center relative">
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+            <div className="h-72 w-full flex items-center justify-center relative">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#ffafbd] to-[#ffc3a0]">
                   {stats.completionRate.toFixed(0)}%
                 </span>
@@ -182,12 +195,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={100}
-                    outerRadius={135}
-                    paddingAngle={8}
+                    innerRadius={90}
+                    outerRadius={120}
+                    paddingAngle={10}
                     dataKey="value"
                     stroke="none"
-                    animationBegin={0}
                     animationDuration={1500}
                   >
                     {pieData.map((entry, index) => (
@@ -199,14 +211,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, stats }) => {
             </div>
             <div className="mt-12 space-y-4">
               {pieData.map((item, i) => (
-                <div key={i} className="group flex items-center justify-between p-5 bg-pink-50/30 rounded-3xl border border-pink-50/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+                <div key={i} className="flex items-center justify-between p-5 bg-pink-50/30 rounded-3xl border border-pink-50/50 hover:bg-white hover:shadow-md transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="w-6 h-6 rounded-xl shadow-inner flex items-center justify-center" style={{ backgroundColor: item.color }}>
-                       <div className="w-2 h-2 rounded-full bg-white/40"></div>
-                    </div>
+                    <div className="w-5 h-5 rounded-xl shadow-sm" style={{ backgroundColor: item.color }}></div>
                     <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{item.name} {item.name === 'Produced' ? '👜' : '🎒'}</span>
                   </div>
-                  <span className="font-black text-slate-800 text-xl group-hover:text-pink-500 transition-colors">{item.value.toLocaleString()}</span>
+                  <span className="font-black text-slate-800 text-xl">{item.value.toLocaleString()}</span>
                 </div>
               ))}
             </div>
