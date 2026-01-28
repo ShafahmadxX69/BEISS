@@ -1,4 +1,3 @@
-
 import { ProductionItem, DailyLog, InvoiceItem } from '../types';
 
 const SPREADSHEET_ID = '1-4Bd7MeYXMkkTWgkIbzrsn_eNz3Dzw5FgTxC7lFgsB0';
@@ -132,7 +131,7 @@ const getQtyStatus = (rows: any[], rowIdx: number, qtyIn: number, targetCol: num
     });
   }
 
-  // Sort by priority: with date first, then by date value, then by column index
+  // Sort by priority matching Apps Script: with date first, then by date, then colIndex
   invoiceList.sort((a, b) => {
     if (a.hasDate !== b.hasDate) return a.hasDate ? -1 : 1;
     if (a.date && b.date) {
@@ -184,11 +183,11 @@ export const fetchInvoiceData = async (brandInput: string, invoiceInput: string)
     brandInput = (brandInput || "").trim().toUpperCase();
     invoiceInput = (invoiceInput || "").trim().toUpperCase();
 
-    // Today Date (K1 -> Index 10)
+    // Today Date from cell K1 (Index 10)
     const todayVal = rows[0].c[10]?.v;
     const todayDate = normalizeDate(todayVal) || new Date();
 
-    // Search targetCol starting from index 14
+    // Search targetCol from index 14 onwards
     let targetCol = -1;
     const brandRow = rows[0].c;
     const invNoRow = rows[4].c;

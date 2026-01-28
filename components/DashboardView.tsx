@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LabelList } from 'recharts';
 import { ProductionItem, DashboardStats } from '../types';
@@ -8,7 +7,7 @@ interface DashboardViewProps {
   stats: DashboardStats;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const produced = payload[0].value;
